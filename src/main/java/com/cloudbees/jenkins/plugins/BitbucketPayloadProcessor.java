@@ -1,13 +1,17 @@
 package com.cloudbees.jenkins.plugins;
 
+import net.sf.json.JSONObject;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.servlet.http.HttpServletRequest;
 
-import net.sf.json.JSONObject;
-
 public class BitbucketPayloadProcessor {
+
+    private static final String REPO_PUSH = "repo:push";
+    private static final String PR_CREATED = "pullrequest:created";
+    private static final String PR_UPDATED = "pullrequest:updated";
 
     private final BitbucketJobProbe probe;
 
@@ -21,7 +25,7 @@ public class BitbucketPayloadProcessor {
 
     public void processPayload(JSONObject payload, HttpServletRequest request) {
         if ("Bitbucket-Webhooks/2.0".equals(request.getHeader("user-agent"))) {
-            if ("repo:push".equals(request.getHeader("x-event-key"))) {
+            if (isTriggerSupported(request.getHeader("x-event-key"))) {
                 LOGGER.log(Level.INFO, "Processing new Webhooks payload");
                 processWebhookPayload(payload);
             }
@@ -52,45 +56,45 @@ public class BitbucketPayloadProcessor {
 
     }
 
-/*
-{
-    "canon_url": "https://bitbucket.org",
-    "commits": [
-        {
-            "author": "marcus",
-            "branch": "master",
-            "files": [
-                {
-                    "file": "somefile.py",
-                    "type": "modified"
-                }
-            ],
-            "message": "Added some more things to somefile.py\n",
-            "node": "620ade18607a",
-            "parents": [
-                "702c70160afc"
-            ],
-            "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
-            "raw_node": "620ade18607ac42d872b568bb92acaa9a28620e9",
-            "revision": null,
-            "size": -1,
-            "timestamp": "2012-05-30 05:58:56",
-            "utctimestamp": "2012-05-30 03:58:56+00:00"
-        }
-    ],
-    "repository": {
-        "absolute_url": "/marcus/project-x/",
-        "fork": false,
-        "is_private": true,
-        "name": "Project X",
-        "owner": "marcus",
-        "scm": "git",
-        "slug": "project-x",
-        "website": "https://atlassian.com/"
-    },
-    "user": "marcus"
-}
-*/
+    /*
+    {
+        "canon_url": "https://bitbucket.org",
+        "commits": [
+            {
+                "author": "marcus",
+                "branch": "master",
+                "files": [
+                    {
+                        "file": "somefile.py",
+                        "type": "modified"
+                    }
+                ],
+                "message": "Added some more things to somefile.py\n",
+                "node": "620ade18607a",
+                "parents": [
+                    "702c70160afc"
+                ],
+                "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                "raw_node": "620ade18607ac42d872b568bb92acaa9a28620e9",
+                "revision": null,
+                "size": -1,
+                "timestamp": "2012-05-30 05:58:56",
+                "utctimestamp": "2012-05-30 03:58:56+00:00"
+            }
+        ],
+        "repository": {
+            "absolute_url": "/marcus/project-x/",
+            "fork": false,
+            "is_private": true,
+            "name": "Project X",
+            "owner": "marcus",
+            "scm": "git",
+            "slug": "project-x",
+            "website": "https://atlassian.com/"
+        },
+        "user": "marcus"
+    }
+    */
     private void processPostServicePayload(JSONObject payload) {
         JSONObject repo = payload.getJSONObject("repository");
         LOGGER.log(Level.INFO, "Received commit hook notification for {0}", repo);
@@ -100,6 +104,10 @@ public class BitbucketPayloadProcessor {
         String scm = repo.getString("scm");
 
         probe.triggerMatchingJobs(user, url, scm, payload.toString());
+    }
+
+    private boolean isTriggerSupported(String trigger) {
+        return REPO_PUSH.equals(trigger) || PR_CREATED.equals(trigger) || PR_UPDATED.equals(trigger);
     }
 
     private static final Logger LOGGER = Logger.getLogger(BitbucketPayloadProcessor.class.getName());
