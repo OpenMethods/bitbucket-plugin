@@ -66,7 +66,8 @@ public class BitBucketTrigger extends Trigger<Job<?, ?>> {
                             logger.println("Changes found");
                         else
                             logger.println("No changes");
-                        return result;
+//                        return result;
+                        return true;
                     } catch (Error e) {
                         e.printStackTrace(listener.error("Failed to record SCM polling"));
                         LOGGER.log(Level.SEVERE,"Failed to record SCM polling",e);
